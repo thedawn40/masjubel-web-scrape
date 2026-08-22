@@ -10,6 +10,10 @@ class Source extends Model
 {
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'is_commodity' => 'boolean',
+    ];
+
     public function goldPrices(): HasMany
     {
         return $this->hasMany(GoldPrice::class);
