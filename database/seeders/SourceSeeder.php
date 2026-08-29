@@ -18,6 +18,7 @@ class SourceSeeder extends Seeder
             ['name' => 'Antam', 'slug' => 'antam', 'url' => 'https://www.logammulia.com/id/harga-emas-hari-ini'],
             ['name' => 'UBS', 'slug' => 'ubs', 'url' => 'https://ubslifestyle.com/harga-buyback-hari-ini/'],
             ['name' => 'King Halim', 'slug' => 'kinghalim', 'url' => 'https://kinghalim.com/goldbarwithamala'],
+            ['name' => 'Galeri 24', 'slug' => 'galeri24', 'url' => 'https://galeri24.co.id/harga-emas'],
             // Sumber komoditas (Emas/Perak/Tembaga) - harga diisi via CommodityPriceSeeder
             ['name' => 'Emas', 'slug' => 'emas', 'url' => '', 'is_commodity' => true],
             ['name' => 'Perak', 'slug' => 'perak', 'url' => '', 'is_commodity' => true],

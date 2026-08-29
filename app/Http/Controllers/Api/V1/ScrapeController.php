@@ -18,6 +18,7 @@ class ScrapeController extends Controller
             'scrape:logam-mulia-gold',
             'scrape:ubs-gold',
             'scrape:kinghalim-gold',
+            'scrape:galeri24-gold',
         ];
 
         foreach ($scrapers as $command) {
