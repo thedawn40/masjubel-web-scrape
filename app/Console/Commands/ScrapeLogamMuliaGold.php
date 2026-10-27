@@ -47,10 +47,10 @@ class ScrapeLogamMuliaGold extends Command
             $this->info("Harga buyback Antam: Rp {$buybackPrice}/gram");
         }
 
-        $targetUrl = 'https://www.logammulia.com/id/harga-emas-hari-ini';
+        $targetUrl = 'https://logammulia.com/harga-emas';
         $apiKey = env('SCRAPER_API_KEY');
 
-        $url = "http://api.scraperapi.com?api_key={$apiKey}&url=".urlencode($targetUrl);
+        $url = "http://api.scraperapi.com?api_key={$apiKey}&render=true&wait=5000&url=".urlencode($targetUrl);
 
         $response = Http::timeout(60)->retry(3, 2000)->get($url);
 
@@ -63,44 +63,26 @@ class ScrapeLogamMuliaGold extends Command
         $crawler = new Crawler($response->body());
         $results = [];
 
-        // Flag untuk menandai apakah baris saat ini adalah kategori "Emas Batangan" reguler
-        $isRegularGold = false;
-
-        $crawler->filter('.table-bordered tr')->each(function (Crawler $node) use (&$results, &$isRegularGold, $buybackPrice) {
-            // Cek apakah ini baris pemisah kategori (menggunakan tag )
-            $th = $node->filter('th');
-            if ($th->count() > 0) {
-                $categoryText = trim($th->text());
-
-                // Kalau ketemu "Emas Batangan", nyalakan flag.
-                // Kalau ketemu seri lain (seperti "Gift Series"), matikan flag.
-                if ($categoryText === 'Emas Batangan') {
-                    $isRegularGold = true;
-                } elseif ($categoryText !== 'Berat' && $categoryText !== 'Harga Dasar') {
-                    // Mematikan flag untuk "Emas Batangan Gift Series", "Imlek", dll
-                    $isRegularGold = false;
+        $crawler->filter('.d-flex.align-center')->each(function (Crawler $node) use (&$results, $buybackPrice) {
+            $texts = [];
+            $node->filter('div, span')->each(function (Crawler $el) use (&$texts) {
+                $t = trim($el->text());
+                if ($t !== '' && !in_array($t, $texts)) {
+                    $texts[] = $t;
                 }
-
-                return; // Skip ke baris selanjutnya
-            }
-
-            // Jika sedang berada di bawah kategori Emas Batangan Reguler
-            if ($isRegularGold) {
-                $tds = $node->filter('td');
-
-                if ($tds->count() >= 3) {
-                    $weightRaw = $tds->eq(0)->text();
-                    $baseRaw = $tds->eq(1)->text();
-                    $taxRaw = $tds->eq(2)->text(); // Kolom ketiga adalah Harga + Pajak
-
-                    // Bersihkan "gr" dan parse ke float
-                    $weight = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', $weightRaw));
-
-                    // Bersihkan koma ribuan dan parse ke integer
-                    $basePrice = (int) preg_replace('/[^0-9]/', '', $baseRaw);
-                    $taxPrice = (int) preg_replace('/[^0-9]/', '', $taxRaw);
-
-                    if ($weight > 0) {
+            });
+            $clean = array_values(array_filter($texts, function ($t) {
+                $isGr = preg_match('/^\d+([.,]\d+)?\s*gr$/i', $t);
+                $isRp = strpos($t, 'Rp') === 0;
+                return strlen($t) < 30 && ($isGr || $isRp);
+            }));
+            if (count($clean) >= 3) {
+                $weight = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', $clean[0]));
+                $basePrice = (int) preg_replace('/[^0-9]/', '', $clean[1]);
+                $taxPrice = (int) preg_replace('/[^0-9]/', '', $clean[2]);
+                if ($weight > 0 && $weight <= 1000) {
+                    $exists = collect($results)->contains('weight', $weight);
+                    if (! $exists && count($results) < 12) {
                         $results[] = [
                             'weight' => $weight,
                             'base_price' => $basePrice,
@@ -156,10 +138,10 @@ class ScrapeLogamMuliaGold extends Command
      */
     private function fetchBuybackPrice(): ?int
     {
-        $targetUrl = 'https://www.logammulia.com/id/sell/gold';
+        $targetUrl = 'https://logammulia.com/harga-hari-ini/emas?tab=jual';
         $apiKey = env('SCRAPER_API_KEY');
 
-        $url = "http://api.scraperapi.com?api_key={$apiKey}&url=".urlencode($targetUrl);
+        $url = "http://api.scraperapi.com?api_key={$apiKey}&render=true&wait=5000&url=".urlencode($targetUrl);
 
         try {
             $response = Http::timeout(60)->retry(3, 2000)->get($url);
@@ -175,20 +157,32 @@ class ScrapeLogamMuliaGold extends Command
             return null;
         }
 
-        $crawler = new Crawler($response->body());
+        $html = $response->body();
+        $crawler = new Crawler($html);
 
-        // Sumber utama: hidden input <input id="valBasePrice" value="2585000.00">
-        if ($crawler->filter('#valBasePrice')->count() > 0) {
-            $raw = $crawler->filter('#valBasePrice')->attr('value');
-            $price = (int) round((float) str_replace(',', '', $raw));
+        $buybackPrice = null;
+        $crawler->filter('.font-weight-bold.color-grey-darker')->each(function (Crawler $node) use (&$buybackPrice) {
+            $text = trim($node->text());
+            if (strpos($text, 'Rp') !== false && strpos($text, '/gr') !== false) {
+                $buybackPrice = (int) preg_replace('/[^0-9]/', '', $text);
+            }
+        });
+
+        if ($buybackPrice !== null && $buybackPrice > 0) {
+            return $buybackPrice;
+        }
+
+        // Cari teks "Harga Beli" diikuti "Rp X,XXX,XXX"
+        if (preg_match('/Harga\s+Beli.*?Rp\s*([\d.,]+)/is', strip_tags($html), $m)) {
+            $price = (int) round((float) preg_replace('/[^\d.]/', '', $m[1]));
 
             if ($price > 0) {
                 return $price;
             }
         }
 
-        // Fallback: cari angka setelah teks "Harga Buyback:" (format "Rp 2,585,000")
-        if (preg_match('/Harga\s+Buyback\s*:<\/span>.*?Rp\s*([\d.,]+)/is', strip_tags($response->body(), '<span><b>'), $m)) {
+        // Fallback: cari angka setelah "Emas Fisik" atau format Rp
+        if (preg_match('/Emas\s+Fisik.*?Rp\s*([\d.,]+)/is', strip_tags($html), $m)) {
             $price = (int) round((float) preg_replace('/[^\d.]/', '', $m[1]));
 
             if ($price > 0) {
