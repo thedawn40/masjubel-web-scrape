@@ -27,7 +27,7 @@ class ScrapeLogamMuliaGold extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('Mengambil data dari Antam via ScraperAPI...');
 
@@ -36,7 +36,7 @@ class ScrapeLogamMuliaGold extends Command
         if (! $source) {
             $this->error('Data sumber belum ada di database!');
 
-            return;
+            return self::FAILURE;
         }
 
         $buybackPrice = $this->fetchBuybackPrice();
@@ -57,7 +57,7 @@ class ScrapeLogamMuliaGold extends Command
         if (! $response->successful()) {
             $this->error('Gagal mengakses web Antam! Status Code: '.$response->status());
 
-            return;
+            return self::FAILURE;
         }
 
         $crawler = new Crawler($response->body());
@@ -67,13 +67,14 @@ class ScrapeLogamMuliaGold extends Command
             $texts = [];
             $node->filter('div, span')->each(function (Crawler $el) use (&$texts) {
                 $t = trim($el->text());
-                if ($t !== '' && !in_array($t, $texts)) {
+                if ($t !== '' && ! in_array($t, $texts)) {
                     $texts[] = $t;
                 }
             });
             $clean = array_values(array_filter($texts, function ($t) {
                 $isGr = preg_match('/^\d+([.,]\d+)?\s*gr$/i', $t);
                 $isRp = strpos($t, 'Rp') === 0;
+
                 return strlen($t) < 30 && ($isGr || $isRp);
             }));
             if (count($clean) >= 3) {
@@ -97,7 +98,7 @@ class ScrapeLogamMuliaGold extends Command
         if (empty($results)) {
             $this->error('Gagal parsing data. Pastikan struktur HTML tidak berubah.');
 
-            return;
+            return self::FAILURE;
         }
 
         // Hitung nilai buyback net per pecahan (mengikuti kalkulator resmi Antam):
@@ -131,6 +132,8 @@ class ScrapeLogamMuliaGold extends Command
         );
 
         $this->info('Scraping Antam selesai!');
+
+        return self::SUCCESS;
     }
 
     /**

@@ -27,7 +27,7 @@ class ScrapeGaleri24Gold extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('Mengambil data dari Galeri 24...');
 
@@ -36,7 +36,7 @@ class ScrapeGaleri24Gold extends Command
         if (! $source) {
             $this->error('Data sumber belum ada di database! Jalankan SourceSeeder terlebih dahulu.');
 
-            return;
+            return self::FAILURE;
         }
 
         $url = 'https://galeri24.co.id/harga-emas';
@@ -49,7 +49,7 @@ class ScrapeGaleri24Gold extends Command
         if (! $response->successful()) {
             $this->error('Gagal mengakses web Galeri 24! Status Code: '.$response->status());
 
-            return;
+            return self::FAILURE;
         }
 
         $results = $this->parsePrices($response->body());
@@ -57,7 +57,7 @@ class ScrapeGaleri24Gold extends Command
         if (empty($results)) {
             $this->error('Tabel GALERI 24 tidak ditemukan atau struktur HTML berubah.');
 
-            return;
+            return self::FAILURE;
         }
 
         $this->info('Menyimpan data ke database...');
@@ -82,6 +82,8 @@ class ScrapeGaleri24Gold extends Command
         );
 
         $this->info('Scraping Galeri 24 selesai!');
+
+        return self::SUCCESS;
     }
 
     /**

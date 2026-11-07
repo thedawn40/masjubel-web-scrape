@@ -26,7 +26,7 @@ class ScrapeHartadinataGold extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('Mengambil data dari API Hartadinata...');
 
@@ -35,7 +35,7 @@ class ScrapeHartadinataGold extends Command
         if (! $source) {
             $this->error('Data sumber belum ada di database!');
 
-            return;
+            return self::FAILURE;
         }
 
         // Kita langsung tembak endpoint API aslinya
@@ -46,7 +46,7 @@ class ScrapeHartadinataGold extends Command
         if (! $response->successful()) {
             $this->error('Gagal mengakses API Hartadinata!');
 
-            return;
+            return self::FAILURE;
         }
 
         // Konversi response JSON ke Array PHP
@@ -77,7 +77,7 @@ class ScrapeHartadinataGold extends Command
         if (empty($results)) {
             $this->error('Data harga (Series Gold) tidak ditemukan di API!');
 
-            return;
+            return self::FAILURE;
         }
 
         $this->info('Menyimpan data ke database...');
@@ -99,5 +99,7 @@ class ScrapeHartadinataGold extends Command
         );
 
         $this->info('Scraping API selesai dengan sukses!');
+
+        return self::SUCCESS;
     }
 }
