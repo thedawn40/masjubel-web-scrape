@@ -20,6 +20,7 @@ class ScrapeController extends Controller
             'scrape:ubs-gold',
             'scrape:kinghalim-gold',
             'scrape:galeri24-gold',
+            'scrape:lotus-archi-gold',
         ];
 
         $failed = [];
