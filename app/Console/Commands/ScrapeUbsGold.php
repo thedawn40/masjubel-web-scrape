@@ -27,7 +27,7 @@ class ScrapeUbsGold extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         info('Mengambil data dari UBS Lifestyle...');
 
@@ -36,7 +36,7 @@ class ScrapeUbsGold extends Command
         if (! $source) {
             $this->error('Data sumber belum ada di database!');
 
-            return;
+            return self::FAILURE;
         }
 
         $url = 'https://ubslifestyle.com/harga-buyback-hari-ini/';
@@ -48,7 +48,7 @@ class ScrapeUbsGold extends Command
         if (! $response->successful()) {
             $this->error('Gagal mengakses web UBS! Status Code: '.$response->status());
 
-            return;
+            return self::FAILURE;
         }
 
         $crawler = new Crawler($response->body());
@@ -80,7 +80,7 @@ class ScrapeUbsGold extends Command
         if (empty($results)) {
             $this->error('Gagal parsing data. Pastikan struktur HTML tidak berubah.');
 
-            return;
+            return self::FAILURE;
         }
 
         $this->info('Menyimpan data ke database...');
@@ -101,5 +101,7 @@ class ScrapeUbsGold extends Command
         );
 
         $this->info('Scraping UBS selesai!');
+
+        return self::SUCCESS;
     }
 }

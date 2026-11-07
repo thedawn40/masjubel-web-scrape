@@ -27,7 +27,7 @@ class ScrapeSampoernaGold extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         info('Mengambil data dari Sampoerna Gold...');
 
@@ -36,7 +36,7 @@ class ScrapeSampoernaGold extends Command
         if (! $source) {
             $this->error('Data sumber belum ada di database!');
 
-            return;
+            return self::FAILURE;
         }
 
         $url = 'https://sampoernagold.com/';
@@ -46,7 +46,7 @@ class ScrapeSampoernaGold extends Command
         if (! $response->successful()) {
             $this->error('Gagal mengakses web Sampoerna Gold!');
 
-            return;
+            return self::FAILURE;
         }
         $crawler = new Crawler($response->body());
         $results = [];
@@ -54,7 +54,7 @@ class ScrapeSampoernaGold extends Command
         if (! str_contains($response->body(), '0,5')) {
             $this->warn('Data tidak ditemukan di HTML mentah. Coba cek Network tab di browser, kemungkinan pakai API!');
 
-            return;
+            return self::FAILURE;
         }
 
         $crawler->filter('table.table-emas tr.table-text')->each(function (Crawler $node, $i) use (&$results) {
@@ -87,7 +87,7 @@ class ScrapeSampoernaGold extends Command
         if (empty($results)) {
             $this->error('Tabel tidak ditemukan atau struktur HTML berbeda.');
 
-            return;
+            return self::FAILURE;
         }
 
         $this->info('Menyimpan data ke database...');
@@ -108,5 +108,7 @@ class ScrapeSampoernaGold extends Command
         );
 
         $this->info('Scraping selesai!');
+
+        return self::SUCCESS;
     }
 }

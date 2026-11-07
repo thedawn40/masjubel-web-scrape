@@ -26,7 +26,7 @@ class ScrapeKingHalimGold extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('Mengambil data dari King Halim...');
 
@@ -35,7 +35,7 @@ class ScrapeKingHalimGold extends Command
         if (! $source) {
             $this->error('Data sumber belum ada di database!');
 
-            return;
+            return self::FAILURE;
         }
 
         $url = 'https://kinghalim.com/goldbarwithamala';
@@ -47,7 +47,7 @@ class ScrapeKingHalimGold extends Command
         if (! $response->successful()) {
             $this->error('Gagal mengakses web King Halim! Status Code: '.$response->status());
 
-            return;
+            return self::FAILURE;
         }
 
         $results = $this->parsePrices($response->body());
@@ -62,7 +62,7 @@ class ScrapeKingHalimGold extends Command
         if (empty($results)) {
             $this->error('Gagal parsing data. Pastikan struktur HTML tidak berubah.');
 
-            return;
+            return self::FAILURE;
         }
 
         // Buyback dipublikasikan sebagai tarif flat per gram,
@@ -96,6 +96,8 @@ class ScrapeKingHalimGold extends Command
         );
 
         $this->info('Scraping King Halim selesai!');
+
+        return self::SUCCESS;
     }
 
     /**
